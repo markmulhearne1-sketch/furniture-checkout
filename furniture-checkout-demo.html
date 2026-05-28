@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maison — Checkout</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ──────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:           #F8F6F2;
+      --white:        #FFFFFF;
+      --forest:       #2C3E2D;
+      --forest-light: #4A6741;
+      --forest-pale:  #EBF4E8;
+      --sand:         #C4A882;
+      --sand-pale:    #FAF6F0;
+      --text:         #1C1C1A;
+      --muted:        #7A7470;
+      --border:       #E8E4DC;
+      --unavail:      #EEECEB;
+      --limited-bg:   #FFF8EC;
+      --limited-text: #A0650D;
+      --radius:       12px;
+      --shadow:       0 2px 24px rgba(0,0,0,0.07);
+    }
+    html { font-family: 'Inter', sans-serif; font-size: 15px; background: var(--bg); color: var(--text); }
+    body { min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    input { font-family: inherit; }
+    /* ─── Header ────────────────────────────────────────────── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 48px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px; letter-spacing: 0.04em;
+      color: var(--forest);
+    }
+    .header-logo span { font-style: italic; color: var(--sand); }
+    .header-secure {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted);
+    }
+    .header-secure svg { width: 14px; height: 14px; }
+    /* ─── Progress Bar ──────────────────────────────────────── */
+    .progress-wrap {
+      background: var(--white); padding: 0 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .progress-steps {
+      display: flex; gap: 0; max-width: 820px; margin: 0 auto;
+    }
+    .progress-step {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      padding: 14px 0; font-size: 13px; font-weight: 500; color: var(--muted);
+      border-bottom: 2px solid transparent; transition: all .2s;
+    }
+    .progress-step.active { color: var(--forest); border-color: var(--forest); }
+    .progress-step.done { color: var(--forest-light); border-color: var(--forest-light); }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600;
+      background: var(--border); color: var(--muted);
+      transition: all .2s; flex-shrink: 0;
+    }
+    .progress-step.active .step-num { background: var(--forest); color: white; }
+    .progress-step.done .step-num { background: var(--forest-light); color: white; }
+    /* ─── Main Layout ───────────────────────────────────────── */
+    .main {
+      max-width: 1100px; margin: 0 auto;
+      padding: 40px 24px;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    /* ─── Order Summary (Left) ──────────────────────────────── */
+    .order-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: sticky; top: 90px;
+    }
+    .order-img {
+      width: 100%; height: 220px;
+      position: relative; overflow: hidden;
+    }
+    .order-img-inner {
+      width: 100%; height: 100%;
+      background: url("https://images.pexels.com/photos/5998030/pexels-photo-5998030.jpeg?auto=compress&cs=tinysrgb&w=700&fit=crop") center/cover no-repeat;
+    }
+    .order-badge {
+      position: absolute; top: 12px; right: 12px;
+      background: var(--forest); color: white;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+      padding: 4px 10px; border-radius: 20px;
+    }
+    .order-body { padding: 20px; }
+    .order-title { font-family: 'Playfair Display', serif; font-size: 17px; line-height: 1.3; margin-bottom: 4px; }
+    .order-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+    .order-perks { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .perk { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--forest-light); }
+    .perk svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .order-line { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: var(--muted); }
+    .order-total { display: flex; justify-content: space-between; font-size: 15px; font-weight: 600; padding-top: 12px; border-top: 1px solid var(--border); margin-top: 4px; }
+    /* ─── Checkout Panel (Right) ────────────────────────────── */
+    .checkout-panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 40px;
+      box-shadow: var(--shadow);
+    }
+    .panel-title { font-family: 'Playfair Display', serif; font-size: 26px; margin-bottom: 6px; }
+    .panel-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+    /* ─── Form ──────────────────────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-full { grid-column: 1/-1; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: 0.03em; text-transform: uppercase; }
+    .form-input {
+      padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 14px; color: var(--text);
+      background: var(--white); outline: none;
+      transition: border-color .2s;
+    }
+    .form-input:focus { border-color: var(--forest); }
+    .form-input::placeholder { color: var(--muted); font-weight: 300; }
+    .form-hint { font-size: 11px; color: var(--muted); }
+    /* ─── Calendar ──────────────────────────────────────────── */
+    .calendar-wrap { margin-top: 4px; }
+    .cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .cal-month { font-family: 'Playfair Display', serif; font-size: 20px; }
+    .cal-nav {
+      display: flex; gap: 8px;
+    }
+    .cal-nav-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--border); color: var(--text);
+      transition: all .15s;
+    }
+    .cal-nav-btn:hover:not(:disabled) { border-color: var(--forest); color: var(--forest); background: var(--forest-pale); }
+    .cal-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .cal-dow {
+      text-align: center; font-size: 11px; font-weight: 600;
+      color: var(--muted); padding: 6px 0; letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .cal-day {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; font-size: 14px; font-weight: 400;
+      transition: all .15s; position: relative; cursor: default;
+      border: 1.5px solid transparent;
+    }
+    .cal-day.empty { background: none; }
+    .cal-day.past, .cal-day.unavailable {
+      color: var(--muted); background: var(--unavail); opacity: 0.5;
+    }
+    .cal-day.available {
+      color: var(--forest); background: var(--forest-pale);
+      cursor: pointer; font-weight: 500;
+    }
+    .cal-day.available:hover {
+      background: var(--forest); color: white;
+      transform: scale(1.05);
+      box-shadow: 0 2px 10px rgba(44,62,45,0.3);
+    }
+    .cal-day.limited {
+      color: var(--limited-text); background: var(--limited-bg);
+      cursor: pointer; font-weight: 500;
+    }
+    .cal-day.limited:hover {
+      background: var(--sand); color: white;
+      transform: scale(1.05);
+    }
+    .cal-day.selected {
+      background: var(--forest) !important; color: white !important;
+      font-weight: 600; border-color: var(--forest);
+      transform: scale(1.05);
+      box-shadow: 0 2px 12px rgba(44,62,45,0.35);
+    }
+    .cal-day.today::after {
+      content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+      width: 4px; height: 4px; border-radius: 50%; background: var(--sand);
+    }
+    .cal-day.selected::after { display: none; }
+    /* Availability dot */
+    .avail-dot {
+      position: absolute; top: 4px; right: 4px;
+      width: 5px; height: 5px; border-radius: 50%;
+    }
+    .available .avail-dot { background: var(--forest-light); }
+    .limited .avail-dot { background: var(--limited-text); }
+    /* ─── Calendar Legend ───────────────────────────────────── */
+    .cal-legend {
+      display: flex; gap: 16px; margin-top: 16px;
+      padding-top: 16px; border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    /* ─── Slot Details Panel ────────────────────────────────── */
+    .slot-panel {
+      margin-top: 20px; padding: 20px;
+      border: 1.5px solid var(--forest-pale);
+      border-radius: 10px; background: var(--forest-pale);
+      animation: slideIn .2s ease;
+    }
+    @keyframes slideIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+    .slot-date-label { font-size: 12px; font-weight: 600; color: var(--forest); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+    .slot-date-val { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--forest); margin-bottom: 14px; }
+    .slot-capacity {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px;
+    }
+    .capacity-bar-wrap { flex: 1; height: 6px; background: rgba(44,62,45,0.15); border-radius: 3px; overflow: hidden; }
+    .capacity-bar { height: 100%; border-radius: 3px; transition: width .4s ease; }
+    .capacity-bar.good { background: var(--forest); }
+    .capacity-bar.limited { background: var(--sand); }
+    .capacity-bar.critical { background: #D97706; }
+    .capacity-label { font-size: 12px; font-weight: 600; }
+    .capacity-label.good { color: var(--forest); }
+    .capacity-label.limited { color: var(--sand); }
+    .capacity-label.critical { color: #D97706; }
+    .slot-windows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+    .slot-window {
+      padding: 12px 10px; border-radius: 8px; text-align: center;
+      border: 1.5px solid var(--border); background: var(--white);
+      cursor: pointer; transition: all .15s;
+    }
+    .slot-window:hover { border-color: var(--forest); background: var(--forest-pale); }
+    .slot-window.selected-window { border-color: var(--forest); background: var(--forest); color: white; }
+    .window-time { font-size: 12px; font-weight: 600; }
+    .window-label { font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .slot-window.selected-window .window-label { color: rgba(255,255,255,0.7); }
+    /* ─── Loading Spinner ───────────────────────────────────── */
+    .loading-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 14px; padding: 40px 0;
+    }
+    .spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--forest);
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--muted); }
+    /* ─── Buttons ───────────────────────────────────────────── */
+    .btn-primary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 16px;
+      background: var(--forest); color: white;
+      border-radius: 10px; font-size: 15px; font-weight: 600;
+      letter-spacing: 0.02em;
+      transition: all .15s;
+      margin-top: 24px;
+    }
+    .btn-primary:hover { background: var(--forest-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(44,62,45,0.3); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 18px; border-radius: 8px;
+      border: 1.5px solid var(--border); font-size: 13px; font-weight: 500;
+      color: var(--muted); transition: all .15s;
+    }
+    .btn-secondary:hover { border-color: var(--forest); color: var(--forest); }
+    /* ─── Confirmation Screen ───────────────────────────────── */
+    .confirm-card {
+      background: var(--forest-pale);
+      border: 1.5px solid rgba(44,62,45,0.15);
+      border-radius: var(--radius); padding: 28px;
+      margin-bottom: 24px;
+    }
+    .confirm-icon { font-size: 36px; margin-bottom: 12px; }
+    .confirm-title { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 6px; color: var(--forest); }
+    .confirm-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .confirm-details { display: flex; flex-direction: column; gap: 14px; }
+    .confirm-row { display: flex; align-items: flex-start; gap: 14px; }
+    .confirm-icon-sm {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--white); display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 16px;
+      border: 1px solid var(--border);
+    }
+    .confirm-row-body { flex: 1; }
+    .confirm-row-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+    .confirm-row-val { font-size: 14px; font-weight: 500; color: var(--text); }
+    /* ─── API Info Banner ───────────────────────────────────── */
+    .api-banner {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 16px; border-radius: 8px;
+      background: #F0F4FF; border: 1px solid #C7D3F5;
+      font-size: 12px; color: #3B51A3;
+      margin-top: 20px; line-height: 1.5;
+    }
+    .api-banner svg { flex-shrink: 0; margin-top: 2px; }
+    .api-banner code { font-family: 'Courier New', monospace; font-size: 11px; background: rgba(59,81,163,0.1); padding: 1px 5px; border-radius: 3px; }
+    /* ─── Config Panel (dev) ────────────────────────────────── */
+    .config-toggle {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--muted); cursor: pointer;
+      margin-top: 16px; justify-content: center;
+    }
+    .config-panel {
+      background: #1C1C1A; border-radius: 8px; padding: 16px;
+      margin-top: 12px; display: none;
+    }
+    .config-panel.open { display: block; }
+    .config-label { font-size: 10px; color: #8B8B8B; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+    .config-input {
+      width: 100%; padding: 8px 10px; border-radius: 6px;
+      background: #2A2A28; border: 1px solid #3A3A38;
+      color: #E8E8E6; font-family: 'Courier New', monospace; font-size: 12px;
+      outline: none; margin-bottom: 10px;
+    }
+    .config-input:focus { border-color: #4A8A6A; }
+    .config-mode { display: flex; gap: 8px; margin-bottom: 10px; }
+    .mode-btn {
+      flex: 1; padding: 6px; border-radius: 5px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+      border: 1px solid #3A3A38; color: #8B8B8B; background: transparent;
+      cursor: pointer; transition: all .15s;
+    }
+    .mode-btn.active { background: var(--forest); color: white; border-color: var(--forest); }
+    .config-apply {
+      width: 100%; padding: 8px; border-radius: 6px;
+      background: var(--forest); color: white;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    /* ─── Skeleton shimmer ─────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .cal-day.skeleton {
+      background: linear-gradient(90deg, #f0ede8 25%, #e8e4dc 50%, #f0ede8 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.2s ease-in-out infinite;
+      border-radius: 10px; opacity: 0.7;
+    }
+    /* ─── Error State ───────────────────────────────────────── */
+    .error-msg {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px; border-radius: 8px;
+      background: #FEF2F2; border: 1px solid #FCA5A5;
+      font-size: 13px; color: #B91C1C; margin-top: 12px;
+    }
+    /* ─── Responsive ────────────────────────────────────────── */
+    @media (max-width: 860px) {
+      .main { grid-template-columns: 1fr; }
+      .order-card { position: static; }
+      .header { padding: 14px 20px; }
+      .progress-wrap { padding: 0 20px; }
+      .main { padding: 20px 16px; }
+      .checkout-panel { padding: 24px 20px; }
+      .slot-windows { grid-template-columns: 1fr 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ─────────────────────────────────────────────── -->
+<header class="header">
+  <div class="header-logo">Mai<span>son</span></div>
+  <div class="header-secure">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="3" y="7" width="10" height="7" rx="1.5"/>
+      <path d="M5 7V5a3 3 0 016 0v2"/>
+    </svg>
+    Secure checkout
+  </div>
+</header>
+
+<!-- ─── Progress ───────────────────────────────────────────── -->
+<div class="progress-wrap">
+  <div class="progress-steps">
+    <div class="progress-step done" id="step-nav-1">
+      <div class="step-num">✓</div> Address
+    </div>
+    <div class="progress-step active" id="step-nav-2">
+      <div class="step-num">2</div> Delivery Date
+    </div>
+    <div class="progress-step" id="step-nav-3">
+      <div class="step-num">3</div> Confirm
+    </div>
+  </div>
+</div>
+
+<!-- ─── Main ───────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Left: Order Summary -->
+  <aside class="order-card">
+    <div class="order-img">
+      <div class="order-img-inner"></div>
+      <div class="order-badge">White-Glove</div>
+    </div>
+    <div class="order-body">
+      <div class="order-title">Elara L-Shaped Sectional Sofa</div>
+      <div class="order-subtitle">Dove Grey · Performance Linen · Left-Facing</div>
+      <div class="order-perks">
+        <div class="perk">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 8l4 4 8-8"/>
+          </svg>
+          White-glove 2-person delivery
+        </div>
+        <div class="perk">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 8l4 4 8-8"/>
+          </svg>
+          Full assembly &amp; room placement
+        </div>
+        <div class="perk">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 8l4 4 8-8"/>
+          </svg>
+          Packaging removal included
+        </div>
+        <div class="perk">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 8l4 4 8-8"/>
+          </svg>
+          30-day satisfaction guarantee
+        </div>
+      </div>
+      <div class="order-line"><span>Elara Sectional (×1)</span><span>$3,249</span></div>
+      <div class="order-line"><span>Protection plan</span><span>$199</span></div>
+      <div class="order-line"><span>White-glove delivery</span><span style="color:var(--forest)">Free</span></div>
+      <div class="order-total"><span>Total</span><span>$3,448</span></div>
+    </div>
+  </aside>
+
+  <!-- Right: Checkout Steps -->
+  <section class="checkout-panel" id="checkout-panel">
+    <!-- Dynamically rendered by JS -->
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading availability…</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CIGO CAPACITY MANAGEMENT — CHECKOUT INTEGRATION
+
+   API Reference: https://app.cigotracker.com/api#tag/capacity_management
+
+   Endpoints used:
+   ┌─ GET /available-booking-dates
+   │  Params: address | geolocation, days_ahead, days_offset,
+   │          weight, volume, handle_time
+   │  Returns: { available_booking_dates: ["YYYY-MM-DD", ...] }
+   │
+   └─ GET /available-slots
+      Params: date (required), geolocation (required)
+      Returns: { max_jobs, available_jobs_slots,
+                 max_weight, available_weight_slots,
+                 max_volume, available_volume_slots }
+
+   Auth: BasicAuth → Authorization: Basic base64(apiKey:apiSecret)
+   ═══════════════════════════════════════════════════════════ */
+
+  // ─── Configuration ─────────────────────────────────────────
+  const CIGO = {
+    apiKey:         '',      // Set via dev panel below
+    apiSecret:      '',
+    baseUrl:        'http://localhost:3001',    // Proxy URL (run cigo-proxy.js)
+    cigoTarget:     'https://app.cigotracker.com', // Actual Cigo environment
+    demoMode:       false,   // false = live API calls; true = preview/demo data only
+    apiStatus:      null,    // null | 'testing' | 'connected' | 'failed'
+    apiStatusMsg:   '',
+    apiStatusLabel: '',
+
+    // Order context (passed to capacity API for accurate availability)
+    order: {
+      weight:      68,       // kg – sectional sofa
+      volume:      2.8,      // m³
+      handle_time: 45,       // minutes (white-glove assembly)
+      days_offset: 0,        // min lead time in days (matches Cigo template "0 days before")
+    }
+  };
+
+  // ─── App State ─────────────────────────────────────────────
+  const state = {
+    step:              1,
+    address:           null,
+    geolocation:       null,
+    addressString:     '',
+    availabilityError: null,
+    availableDates:    new Set(),
+    limitedDates:      new Set(),
+    selectedDate:      null,
+    selectedWindow:    null,
+    slotData:          null,
+    calendarYear:      new Date().getFullYear(),
+    calendarMonth:     new Date().getMonth(),
+    loading:           false,
+    error:             null,
+  };
+
+  // ─── Auth Helper ───────────────────────────────────────────
+  function authHeader() {
+    return 'Basic ' + btoa(`${CIGO.apiKey}:${CIGO.apiSecret}`);
+  }
+
+  // ─── Format address for Cigo API ───────────────────────────
+  // Cigo expects: "Civic Number, Street Name, Street Type, City, Province, Postal Code"
+  // Canadian postal codes need a space: M6J 1E5 not M6J1E5
+  function formatCigoAddress(f) {
+    const postal = f.postal
+      ? f.postal.replace(/\s+/g, '').replace(/^([A-Z]\d[A-Z])(\d[A-Z]\d)$/i, '$1 $2')
+      : '';
+    return [f.street, f.city, f.province, postal].filter(Boolean).join(', ');
+  }
+
+  // ─── Build fetch URL ───────────────────────────────────────
+  // If baseUrl is localhost (proxy), add _base param so the proxy
+  // knows which Cigo environment to forward to.
+  function buildUrl(path, params) {
+    const isProxy = CIGO.baseUrl.includes('localhost');
+    if (isProxy) params.set('_base', CIGO.cigoTarget);
+    return `${CIGO.baseUrl}${path}?${params}`;
+  }
+
+  // ─── Geocode address → "lat,lng" via OpenStreetMap Nominatim ──
+  // Free, no API key required. Returns null on failure (non-fatal).
+  async function geocodeAddress(addressString) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressString)}&format=json&limit=1`;
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json', 'Accept-Language': 'en' }
+      });
+      if (!res.ok) return null;
+      const results = await res.json();
+      if (!results || results.length === 0) return null;
+      const { lat, lon } = results[0];
+      const geoloc = `${parseFloat(lat).toFixed(6)},${parseFloat(lon).toFixed(6)}`;
+      console.log(`Geocoded "${addressString}" → ${geoloc}`);
+      return geoloc;
+    } catch(e) {
+      console.warn('Geocoding failed (non-fatal):', e.message);
+      return null;
+    }
+  }
+
+  // ─── Real API: Fetch Available Booking Dates ───────────────
+  async function apiFetchAvailableDates(addressString, geoloc) {
+    const params = new URLSearchParams({});
+
+    // Prefer geolocation — more reliable for Cigo zone polygon matching.
+    // Fall back to address string if geocoding failed.
+    if (geoloc)             params.set('geolocation', geoloc);
+    else if (addressString) params.set('address', addressString);
+
+    console.log('Calling /available-booking-dates →', Object.fromEntries(params));
+
+    const res = await fetch(buildUrl('/api/v1/available-booking-dates', params), {
+      headers: { Authorization: authHeader() }
+    });
+
+    // Customer-facing UX rule: never bounce back with a raw 404.
+    // If Cigo says no zone/no dates/no template, the checkout still advances
+    // and the calendar clearly says there is no delivery availability.
+    if (res.status === 404) return [];
+
+    if (!res.ok) {
+      const msg = await readApiError(res);
+      const err = new Error(msg || `API error ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+
+    const data = await res.json();
+    return data.available_booking_dates || [];
+  }
+
+  // ─── Real API: Fetch Slots for a Date ──────────────────────
+  async function apiFetchSlots(date) {
+    const params = new URLSearchParams({ date });
+
+    // /available-slots requires geolocation in many Cigo environments.
+    // If a backend geocoder/proxy supplies it, use it. Otherwise send address
+    // so the server/proxy can resolve it without exposing geocoding in browser JS.
+    if (state.geolocation) params.set('geolocation', state.geolocation);
+    else if (state.addressString) params.set('address', state.addressString);
+
+    const res = await fetch(buildUrl('/api/v1/available-slots', params), {
+      headers: { Authorization: authHeader() }
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const msg = await readApiError(res);
+      const err = new Error(msg || `API error ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+    // → { max_jobs, available_jobs_slots, max_weight, available_weight_slots,
+    //     max_volume, available_volume_slots }
+  }
+
+  async function readApiError(res) {
+    try {
+      const data = await res.json();
+      return data.message || data.error || JSON.stringify(data);
+    } catch(e) {
+      try { return await res.text(); } catch(_) { return ''; }
+    }
+  }
+
+  // ─── API Connection Test ────────────────────────────────────
+  // Returns { ok: bool, label: string, detail: string }
+  async function testApiConnection() {
+    if (!CIGO.apiKey || !CIGO.apiSecret) {
+      return { ok: false, label: 'No credentials', detail: 'Enter your API Key and Secret above.' };
+    }
+    const params = new URLSearchParams({ address: '123 Elm Street, Toronto, Ontario, M5V 2T6', days_ahead: 1 });
+    try {
+      const res = await fetch(
+        buildUrl('/api/v1/available-booking-dates', params),
+        { headers: { Authorization: authHeader() } }
+      );
+      if (res.status === 200 || res.status === 404) {
+        return { ok: true,  label: 'Connected', detail: `Auth accepted · ${CIGO.baseUrl}` };
+      } else if (res.status === 401) {
+        return { ok: false, label: 'Invalid credentials', detail: 'Check your API Key and Secret — got 401.' };
+      } else if (res.status === 403) {
+        return { ok: false, label: 'Access restricted', detail: 'Capacity Management endpoint needs to be enabled. Contact api.support@cigotracker.com.' };
+      } else if (res.status === 409) {
+        return { ok: false, label: 'API disabled', detail: 'Public API access is not enabled for this account.' };
+      } else {
+        let body = '';
+        try { const j = await res.json(); body = j.message || JSON.stringify(j); } catch(e) {}
+        return { ok: false, label: `Error ${res.status}`, detail: body || 'Unexpected response from server.' };
+      }
+    } catch (e) {
+      const isNetworkError = e instanceof TypeError;
+      const isLocalhost    = CIGO.baseUrl.includes('localhost');
+      if (isNetworkError && isLocalhost) {
+        return {
+          ok: false,
+          label: 'Proxy not running',
+          detail: 'The local Cigo proxy is not running. In Terminal run: node cigo-proxy.js — then click Test & Apply again.'
+        };
+      }
+      if (isNetworkError) {
+        return {
+          ok: false,
+          label: 'CORS blocked',
+          detail: 'Browser blocked the direct API request. Run cigo-proxy.js locally as described.'
+        };
+      }
+      return { ok: false, label: 'Network error', detail: e.message };
+    }
+  }
+
+  // ─── Demo Mode: Generate Realistic Mock Data ───────────────
+  function demoGenerateDates() {
+    const today    = new Date();
+    const offset   = CIGO.order.days_offset;
+    const dates    = new Set();
+    const limited  = new Set();
+
+    // Seed-based pseudo-random so dates are consistent per session
+    function seededRand(d) {
+      const s = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+      return ((s * 9301 + 49297) % 233280) / 233280;
+    }
+
+    for (let i = offset; i <= 75; i++) {
+      const d     = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dow   = d.getDay(); // 0=Sun, 6=Sat
+      const r     = seededRand(d);
+      const iso   = isoDate(d);
+
+      if (dow === 0) continue; // No Sundays
+
+      if (dow === 6) {
+        // Saturdays — fewer slots
+        if (r < 0.55) {
+          if (r < 0.25) limited.add(iso); // 25% of Sats are limited
+          else dates.add(iso);
+        }
+      } else {
+        // Weekdays — good availability
+        if (r < 0.78) {
+          if (r < 0.18) limited.add(iso);
+          else dates.add(iso);
+        }
+      }
+    }
+    return { dates, limited };
+  }
+
+  function demoGenerateSlots(date) {
+    const s   = date.replace(/-/g, '');
+    const r   = ((s * 9301 + 49297) % 233280) / 233280;
+    const max = 8;
+    const avail = Math.max(1, Math.round(max * (0.3 + r * 0.7)));
+    return {
+      max_jobs:               max,
+      available_jobs_slots:   avail,
+      max_weight:             600,
+      available_weight_slots: Math.round(600 * (avail / max)),
+      max_volume:             40,
+      available_volume_slots: Math.round(40  * (avail / max)),
+    };
+  }
+
+  // ─── Utility ───────────────────────────────────────────────
+  function isoDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function formatDisplay(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m-1, d).toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    });
+  }
+  function monthName(year, month) {
+    return new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+
+  // ─── STEP 1: Address ───────────────────────────────────────
+  function renderStep1() {
+    const panel = document.getElementById('checkout-panel');
+    panel.innerHTML = `
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div class="panel-title" style="margin-bottom:0">Delivery address</div>
+          ${CIGO.demoMode
+            ? `<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280;border:1px solid #E5E7EB;letter-spacing:.04em">DEMO</span>`
+            : `<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#DCFCE7;color:#16A34A;border:1px solid #BBF7D0;letter-spacing:.04em">● LIVE API</span>`
+          }
+        </div>
+        <div class="panel-subtitle">We'll use this to check real-time availability in your area.</div>
+
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label class="form-label">Street Address</label>
+            <input class="form-input" id="f-street" placeholder="123 Elm Street" value="${state.address?.street || '123 Elm Street'}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input class="form-input" id="f-city" placeholder="Toronto" value="${state.address?.city || 'Toronto'}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Province / State</label>
+            <input class="form-input" id="f-province" placeholder="Ontario" value="${state.address?.province || 'Ontario'}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Postal / ZIP Code</label>
+            <input class="form-input" id="f-postal" placeholder="M5V 2T6" value="${state.address?.postal || 'M5V 2T6'}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Apt / Suite <span style="font-weight:300;color:var(--muted)">(optional)</span></label>
+            <input class="form-input" id="f-apt" placeholder="Apt 4B" />
+          </div>
+        </div>
+        <div id="step1-error"></div>
+        <button class="btn-primary" id="btn-check-avail">
+          Check delivery availability
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+        </button>
+        ${renderDevPanel()}
+      </div>
+    `;
+    document.getElementById('btn-check-avail').addEventListener('click', handleCheckAvailability);
+    initDevPanel();
+    initPrefetch();
+  }
+
+  // ─── Prefetch: silently hit API once postal code is complete ──
+  // Result is cached in state.prefetchCache keyed by address string.
+  // handleCheckAvailability reads from cache first — instant render.
+  const prefetchCache = {};
+  let   prefetchTimer = null;
+
+  function initPrefetch() {
+    if (CIGO.demoMode) return;
+    const postalInput = document.getElementById('f-postal');
+    if (!postalInput) return;
+
+    postalInput.addEventListener('input', () => {
+      clearTimeout(prefetchTimer);
+      const postal = postalInput.value.trim();
+      // Canadian: 6 chars (M6J1E5) or 7 with space (M6J 1E5). US ZIP: 5 digits.
+      const isComplete = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/.test(postal) || /^\d{5}$/.test(postal);
+      if (!isComplete) return;
+
+      // Small debounce — wait for user to stop typing
+      prefetchTimer = setTimeout(() => {
+        const street   = (document.getElementById('f-street')   || {}).value || '';
+        const city     = (document.getElementById('f-city')     || {}).value || '';
+        const province = (document.getElementById('f-province') || {}).value || '';
+        if (!street || !city) return;
+
+        const addr = formatCigoAddress({ street: street.trim(), city: city.trim(), province: province.trim(), postal });
+        if (prefetchCache[addr] !== undefined) return; // already fetched
+
+        prefetchCache[addr] = 'loading';
+        console.log('Prefetching availability for:', addr);
+
+        apiFetchAvailableDates(addr, null)
+          .then(dates => {
+            prefetchCache[addr] = dates;
+            console.log('Prefetch complete —', dates.length, 'dates cached');
+          })
+          .catch(() => {
+            prefetchCache[addr] = null; // mark as failed so we retry properly on submit
+          });
+      }, 400);
+    });
+  }
+
+  // ─── Handle: Check Availability ────────────────────────────
+  async function handleCheckAvailability() {
+    const street   = document.getElementById('f-street').value.trim();
+    const city     = document.getElementById('f-city').value.trim();
+    const province = document.getElementById('f-province').value.trim();
+    const postal   = document.getElementById('f-postal').value.trim();
+
+    if (!street || !city || !postal) {
+      showError('step1-error', 'Please fill in your street address, city, and postal code.');
+      return;
+    }
+
+    state.address = { street, city, province, postal };
+    state.addressString = formatCigoAddress(state.address);
+    state.geolocation = null; // Do not hardcode Toronto. Let Cigo/proxy use the actual address.
+    state.availabilityError = null;
+    state.selectedDate = null;
+    state.selectedWindow = null;
+    state.slotData = null;
+
+    state.address        = { street, city, province, postal };
+    state.addressString  = formatCigoAddress(state.address);
+    state.availabilityError = null;
+    state.selectedDate   = null;
+    state.selectedWindow = null;
+    state.slotData       = null;
+    state._datesLoading  = false;
+    const savedAddress   = { street, city, province, postal };
+
+    renderLoadingOverlay(CIGO.demoMode ? 'Checking preview availability…' : 'Checking delivery availability…');
+
+    let fatalError = null;
+    try {
+      if (CIGO.demoMode) {
+        await delay(600);
+        const { dates, limited } = demoGenerateDates();
+        state.availableDates = dates;
+        state.limitedDates   = limited;
+      } else {
+        // Use prefetch cache if ready — instant. Otherwise await the call.
+        const cached = prefetchCache[state.addressString];
+        const datesList = Array.isArray(cached)
+          ? cached
+          : await apiFetchAvailableDates(state.addressString, null);
+        state.availableDates = new Set();
+        state.limitedDates   = new Set();
+        datesList.forEach(d => state.availableDates.add(d));
+        CIGO._lastDebug = { addressSent: state.addressString, datesReturned: datesList, count: datesList.length };
+        if (!datesList.length) state.availabilityError = 'No available delivery dates found for this address.';
+      }
+      state.step = 2;
+      updateProgress();
+      renderStep2();
+    } catch(e) {
+      fatalError = e;
+    }
+
+    if (fatalError) {
+      let msg = fatalError.message || 'Unexpected error.';
+      if (fatalError instanceof TypeError) msg = 'Could not reach the Cigo proxy. Make sure cigo-proxy.js is running.';
+      else if (fatalError.status === 401)  msg = 'Authentication failed — check your API Key and Secret.';
+      else if (fatalError.status === 403)  msg = 'Access restricted — check your account settings.';
+      state.address = savedAddress;
+      renderStep1();
+      setTimeout(() => showError('step1-error', msg), 0);
+    }
+  }
+
+  // ─── STEP 2: Date Selection ─────────────────────────────────
+  function renderStep2() {
+    const panel  = document.getElementById('checkout-panel');
+    const today  = new Date();
+    // Start calendar at the first available date's month, or current month
+    if (!state.calendarYear) state.calendarYear = today.getFullYear();
+    if (!state.calendarMonth && state.calendarMonth !== 0) state.calendarMonth = today.getMonth();
+
+    panel.innerHTML = `
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <button class="btn-secondary" id="btn-back-1">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 8H3M7 12l-4-4 4-4"/>
+            </svg>
+            Edit address
+          </button>
+          <button class="btn-secondary" id="btn-refresh-dates" title="Refresh availability">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13.5 2.5A6.5 6.5 0 1 1 7 1"/>
+              <path d="M7 1l3 3-3 3"/>
+            </svg>
+            Refresh dates
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div class="panel-title" style="margin-bottom:0">Choose your delivery date</div>
+          ${CIGO.demoMode
+            ? `<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280;border:1px solid #E5E7EB;letter-spacing:.04em">DEMO</span>`
+            : `<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#DCFCE7;color:#16A34A;border:1px solid #BBF7D0;letter-spacing:.04em">● LIVE API</span>`
+          }
+        </div>
+        <div class="panel-subtitle">
+          ${CIGO.demoMode
+            ? 'Showing <strong>simulated</strong> availability. Switch to Live API in Developer settings to use real Cigo data.'
+            : 'Showing <strong>real-time availability</strong> from your Cigo account. Only dates with remaining capacity are selectable.'
+          }
+        </div>
+
+        <div class="calendar-wrap">
+          <div class="cal-header">
+            <div class="cal-month" id="cal-month-label">${monthName(state.calendarYear, state.calendarMonth)}</div>
+            <div class="cal-nav">
+              <button class="cal-nav-btn" id="cal-prev" title="Previous month">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 4l-4 4 4 4"/>
+                </svg>
+              </button>
+              <button class="cal-nav-btn" id="cal-next" title="Next month">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 4l4 4-4 4"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="cal-grid" id="cal-grid">
+            <!-- Days of week headers -->
+            ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<div class="cal-dow">${d}</div>`).join('')}
+          </div>
+
+          <div class="cal-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--forest-pale);border:1px solid var(--forest-light)"></div> Available</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--limited-bg);border:1px solid var(--sand)"></div> Limited</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--unavail)"></div> Unavailable</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--forest)"></div> Selected</div>
+          </div>
+        </div>
+
+        <div id="no-avail-msg">${renderNoAvailabilityMessage()}</div>
+        <div id="slot-panel-wrap"></div>
+        <div id="step2-error"></div>
+
+        <button class="btn-primary" id="btn-confirm-date" disabled>
+          Continue to confirmation
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    document.getElementById('btn-back-1').addEventListener('click', () => {
+      state.step = 1; updateProgress(); renderStep1();
+    });
+    document.getElementById('btn-refresh-dates').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-refresh-dates');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:2px"></div> Refreshing…';
+      try {
+        const datesList = await apiFetchAvailableDates(state.addressString, null);
+        state.availableDates = new Set();
+        state.limitedDates   = new Set();
+        datesList.forEach(d => state.availableDates.add(d));
+        state.selectedDate   = null;
+        state.selectedWindow = null;
+        state.slotData       = null;
+        CIGO._lastDebug = { addressSent: state.addressString, datesReturned: datesList, count: datesList.length };
+      } catch(e) {
+        // silently ignore — keep existing dates shown
+      }
+      renderStep2();
+    });
+    document.getElementById('cal-prev').addEventListener('click', () => {
+      navigateMonth(-1);
+    });
+    document.getElementById('cal-next').addEventListener('click', () => {
+      navigateMonth(1);
+    });
+    document.getElementById('btn-confirm-date').addEventListener('click', () => {
+      if (state.selectedDate && state.selectedWindow) {
+        state.step = 3; updateProgress(); renderStep3();
+      } else if (state.selectedDate && !state.selectedWindow) {
+        showError('step2-error', 'Please select a preferred delivery window.');
+      }
+    });
+
+    renderCalendarDays();
+  }
+
+  function renderNoAvailabilityMessage() {
+    const total = state.availableDates.size + state.limitedDates.size;
+    if (total > 0) return '';
+    const addr = state.address
+      ? `${state.address.street}, ${state.address.city}, ${state.address.province} ${state.address.postal}`
+      : 'this address';
+    const dbg = CIGO._lastDebug;
+    const debugBlock = (!CIGO.demoMode && dbg) ? `
+      <div style="margin-top:14px;padding:12px;border-radius:8px;background:rgba(0,0,0,0.06);font-family:'Courier New',monospace;font-size:11px;line-height:1.7;color:#5C3500">
+        <strong>🔍 API debug</strong><br>
+        Address: ${dbg.addressSent}<br>
+        Dates returned: ${dbg.count === 0 ? '<span style="color:#B91C1C">0 (empty array)</span>' : dbg.datesReturned.join(', ')}
+      </div>` : '';
+    return `
+      <div style="margin-top:18px;padding:20px;border-radius:12px;background:#FFF8EC;border:1px solid #F2D6A2;color:#7C4A03">
+        <div style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:6px;color:#7C4A03">No delivery dates available</div>
+        <div style="font-size:13px;line-height:1.6">
+          We couldn't find any upcoming delivery dates for your address. Please contact us for assistance.<br><br>
+          <strong>Address checked:</strong> ${addr}
+        </div>
+        ${debugBlock}
+      </div>`;
+  }
+
+  function renderCalendarDays() {
+    const grid    = document.getElementById('cal-grid');
+    // Remove old day cells (keep DOW headers = first 7 cells)
+    const existing = grid.querySelectorAll('.cal-day');
+    existing.forEach(e => e.remove());
+
+    const today   = new Date();
+    const todayIso = isoDate(today);
+    const year    = state.calendarYear;
+    const month   = state.calendarMonth;
+
+    const monthLabel = document.getElementById('cal-month-label');
+    if (monthLabel) monthLabel.textContent = monthName(year, month);
+
+    // Prev button disabled if already at current month
+    const prevBtn = document.getElementById('cal-prev');
+    prevBtn.disabled = (year === today.getFullYear() && month === today.getMonth());
+
+    const firstDay  = new Date(year, month, 1);
+    // Monday-start: convert Sunday(0) to 6, others shift by -1
+    let startDow = firstDay.getDay();
+    startDow = (startDow === 0) ? 6 : startDow - 1;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Empty cells before first day
+    for (let i = 0; i < startDow; i++) {
+      const el = document.createElement('div');
+      el.className = 'cal-day empty';
+      grid.appendChild(el);
+    }
+
+    // Day cells
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt  = new Date(year, month, d);
+      const iso = isoDate(dt);
+      const el  = document.createElement('div');
+      el.textContent = d;
+
+      if (iso === todayIso) el.classList.add('today');
+
+      if (iso === state.selectedDate) {
+        el.className = 'cal-day selected';
+      } else if (dt < today || iso === todayIso) {
+        el.className = 'cal-day past';
+      } else if (state.limitedDates.has(iso)) {
+        el.className = 'cal-day limited';
+        const dot = document.createElement('div');
+        dot.className = 'avail-dot';
+        el.appendChild(dot);
+        el.addEventListener('click', () => selectDate(iso));
+        el.title = 'Limited availability';
+      } else if (state.availableDates.has(iso)) {
+        el.className = 'cal-day available';
+        const dot = document.createElement('div');
+        dot.className = 'avail-dot';
+        el.appendChild(dot);
+        el.addEventListener('click', () => selectDate(iso));
+        el.title = 'Available';
+      } else {
+        el.className = 'cal-day unavailable';
+        el.title = 'Fully booked';
+      }
+
+      grid.appendChild(el);
+    }
+  }
+
+  function navigateMonth(dir) {
+    state.calendarMonth += dir;
+    if (state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
+    if (state.calendarMonth > 11) { state.calendarMonth = 0; state.calendarYear++; }
+    renderCalendarDays();
+  }
+
+  async function selectDate(iso) {
+    state.selectedDate   = iso;
+    state.selectedWindow = null;
+    state.slotData       = null;
+    renderCalendarDays();
+
+    // Show slot panel with loading
+    const slotWrap = document.getElementById('slot-panel-wrap');
+    slotWrap.innerHTML = `
+      <div class="slot-panel">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <div class="spinner" style="width:20px;height:20px;border-width:2px"></div>
+          <div style="font-size:13px;color:var(--forest)">Loading slot availability…</div>
+        </div>
+      </div>
+    `;
+
+    try {
+      let slots;
+      if (CIGO.demoMode) {
+        await delay(500);
+        slots = demoGenerateSlots(iso);
+      } else {
+        slots = await apiFetchSlots(iso);
+      }
+      state.slotData = slots;
+      renderSlotPanel(iso, slots, null);
+    } catch(e) {
+      // Do not block conversion if date-level availability is confirmed but slot-level
+      // capacity details fail. Let the customer pick a preferred window and surface a soft warning.
+      state.slotData = null;
+      renderSlotPanel(iso, null, 'Date availability was confirmed, but detailed slot capacity could not be loaded.');
+    }
+  }
+
+  function renderSlotPanel(iso, slots, softWarning) {
+    slots = slots || { max_jobs: 1, available_jobs_slots: 1, max_weight: null, available_weight_slots: null, max_volume: null, available_volume_slots: null };
+    const pct     = slots.available_jobs_slots / Math.max(slots.max_jobs, 1);
+    const pctPc   = Math.round(pct * 100);
+    let capClass, capLabel;
+    if (pct >= 0.4)      { capClass = 'good';     capLabel = 'Good availability'; }
+    else if (pct >= 0.2) { capClass = 'limited';  capLabel = `${slots.available_jobs_slots} spots remaining`; }
+    else                 { capClass = 'critical'; capLabel = `Only ${slots.available_jobs_slots} spot${slots.available_jobs_slots === 1 ? '' : 's'} left!`; }
+
+    const windows = [
+      { id: 'am',  label: 'Morning',   time: '8:00 – 12:00' },
+      { id: 'pm',  label: 'Afternoon', time: '12:00 – 16:00' },
+      { id: 'eve', label: 'Evening',   time: '16:00 – 20:00' },
+    ];
+
+    const windowHtml = windows.map(w => `
+      <div class="slot-window ${state.selectedWindow === w.id ? 'selected-window' : ''}"
+           data-win="${w.id}">
+        <div class="window-time">${w.time}</div>
+        <div class="window-label">${w.label}</div>
+      </div>
+    `).join('');
+
+    const slotWrap = document.getElementById('slot-panel-wrap');
+    slotWrap.innerHTML = `
+      <div class="slot-panel">
+        <div class="slot-date-label">Selected Delivery Date</div>
+        <div class="slot-date-val">${formatDisplay(iso)}</div>
+        <div class="slot-capacity">
+          <div class="capacity-bar-wrap">
+            <div class="capacity-bar ${capClass}" style="width:${pctPc}%"></div>
+          </div>
+          <div class="capacity-label ${capClass}">${capLabel}</div>
+        </div>
+        ${softWarning ? `<div style="font-size:12px;color:#A0650D;background:#FFF8EC;border:1px solid #F2D6A2;border-radius:8px;padding:10px;margin-bottom:12px">${softWarning}</div>` : ''}
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          Choose your preferred delivery window. We'll confirm your exact 2-hour slot 24hrs before.
+        </div>
+        <div class="slot-windows">${windowHtml}</div>
+      </div>
+    `;
+
+    slotWrap.querySelectorAll('.slot-window').forEach(el => {
+      el.addEventListener('click', () => {
+        state.selectedWindow = el.dataset.win;
+        renderSlotPanel(iso, slots, softWarning); // Re-render with selection
+        document.getElementById('btn-confirm-date').disabled = false;
+        document.getElementById('step2-error').innerHTML = '';
+      });
+    });
+  }
+
+  // ─── STEP 3: Confirmation ───────────────────────────────────
+  function renderStep3() {
+    const panel   = document.getElementById('checkout-panel');
+    const windows = { am: '8:00 – 12:00', pm: '12:00 – 16:00', eve: '16:00 – 20:00' };
+    const winLabel = windows[state.selectedWindow] || '';
+    const addr = state.address;
+
+    panel.innerHTML = `
+      <div>
+        <button class="btn-secondary" id="btn-back-2" style="margin-bottom:20px">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 8H3M7 12l-4-4 4-4"/>
+          </svg>
+          Change date
+        </button>
+
+        <div class="panel-title">Confirm your order</div>
+        <div class="panel-subtitle">Review your delivery details, then complete your purchase.</div>
+
+        <div class="confirm-card">
+          <div class="confirm-icon">🗓</div>
+          <div class="confirm-title">Delivery confirmed for<br>${formatDisplay(state.selectedDate)}</div>
+          <div class="confirm-sub">Your 2-hour window (${winLabel}) will be confirmed by SMS & email the evening before.</div>
+        </div>
+
+        <div class="confirm-details" style="margin-bottom:28px">
+          <div class="confirm-row">
+            <div class="confirm-icon-sm">📍</div>
+            <div class="confirm-row-body">
+              <div class="confirm-row-label">Delivery Address</div>
+              <div class="confirm-row-val">${addr.street}, ${addr.city}, ${addr.province} ${addr.postal}</div>
+            </div>
+          </div>
+          <div class="confirm-row">
+            <div class="confirm-icon-sm">🛋</div>
+            <div class="confirm-row-body">
+              <div class="confirm-row-label">Item</div>
+              <div class="confirm-row-val">Elara L-Shaped Sectional Sofa — Dove Grey</div>
+            </div>
+          </div>
+          <div class="confirm-row">
+            <div class="confirm-icon-sm">🕐</div>
+            <div class="confirm-row-body">
+              <div class="confirm-row-label">Preferred Window</div>
+              <div class="confirm-row-val">${winLabel} (exact 2-hr slot confirmed 24hrs before)</div>
+            </div>
+          </div>
+          <div class="confirm-row">
+            <div class="confirm-icon-sm">✨</div>
+            <div class="confirm-row-body">
+              <div class="confirm-row-label">Service</div>
+              <div class="confirm-row-val">White-glove 2-person delivery + full assembly</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment placeholder -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px">Payment</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px">
+            <input class="form-input" placeholder="Card number" style="grid-column:1/-1"/>
+            <input class="form-input" placeholder="MM / YY" />
+            <input class="form-input" placeholder="CVC" />
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-place-order"
+          style="background:var(--sand);color:white">
+          Place order · $3,448
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+        </button>
+
+        <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px">
+          By placing your order you agree to our Terms & Conditions.<br>
+          Your delivery date is secured by Cigo real-time capacity management.
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-back-2').addEventListener('click', () => {
+      state.step = 2; updateProgress(); renderStep2();
+    });
+    document.getElementById('btn-place-order').addEventListener('click', handlePlaceOrder);
+  }
+
+  async function handlePlaceOrder() {
+    const btn = document.getElementById('btn-place-order');
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+    await delay(1800);
+    renderOrderSuccess();
+  }
+
+  function renderOrderSuccess() {
+    const panel = document.getElementById('checkout-panel');
+    panel.innerHTML = `
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:56px;margin-bottom:16px">🎉</div>
+        <div style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:10px;color:var(--forest)">Order confirmed!</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.7;max-width:380px;margin:0 auto 28px">
+          Your Elara Sectional is on its way. You'll receive a confirmation email and a 2-hour delivery window
+          the evening before <strong>${formatDisplay(state.selectedDate)}</strong>.
+        </div>
+        <div style="background:var(--forest-pale);border-radius:12px;padding:20px;max-width:360px;margin:0 auto 24px;text-align:left">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">What happens next</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px;font-size:13px">
+              <span style="color:var(--forest);font-weight:600;flex-shrink:0">1.</span>
+              Confirmation email sent to your inbox
+            </div>
+            <div style="display:flex;gap:10px;font-size:13px">
+              <span style="color:var(--forest);font-weight:600;flex-shrink:0">2.</span>
+              Evening before delivery: SMS with your exact 2-hour window
+            </div>
+            <div style="display:flex;gap:10px;font-size:13px">
+              <span style="color:var(--forest);font-weight:600;flex-shrink:0">3.</span>
+              Day of: live driver tracking via Cigo
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">Order #MAI-${Math.random().toString(36).substr(2,8).toUpperCase()}</div>
+      </div>
+    `;
+    // Update progress
+    ['step-nav-1','step-nav-2','step-nav-3'].forEach(id => {
+      const el = document.getElementById(id);
+      el.className = 'progress-step done';
+      el.querySelector('.step-num').textContent = '✓';
+    });
+  }
+
+  // ─── Progress ──────────────────────────────────────────────
+  function updateProgress() {
+    const steps = [1,2,3];
+    steps.forEach(n => {
+      const el  = document.getElementById(`step-nav-${n}`);
+      const num = el.querySelector('.step-num');
+      if (n < state.step)     { el.className = 'progress-step done'; num.textContent = '✓'; }
+      else if (n === state.step) { el.className = 'progress-step active'; num.textContent = n; }
+      else                    { el.className = 'progress-step'; num.textContent = n; }
+    });
+  }
+
+  // ─── Dev Panel (API config) ─────────────────────────────────
+  function renderDevPanel() {
+    const isLive   = !CIGO.demoMode;
+    const st       = CIGO.apiStatus; // null | 'testing' | 'connected' | 'failed'
+    const stMsg    = CIGO.apiStatusMsg || '';
+
+    // Status badge HTML
+    let statusBadge = '';
+    if (isLive) {
+      if (st === 'testing') {
+        statusBadge = `<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#6B7280;margin-top:8px">
+          <div class="spinner" style="width:12px;height:12px;border-width:2px"></div> Testing connection…
+        </div>`;
+      } else if (st === 'connected') {
+        statusBadge = `<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#16A34A;margin-top:8px">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="8" cy="8" r="6" fill="#DCFCE7" stroke="#16A34A"/><path d="M5 8l2 2 4-4" stroke="#16A34A"/></svg>
+          <strong>Connected</strong> · ${stMsg}
+        </div>`;
+      } else if (st === 'failed') {
+        statusBadge = `<div style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#DC2626;margin-top:8px;line-height:1.5">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="6" fill="#FEE2E2" stroke="#DC2626"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#DC2626"/></svg>
+          <span><strong>${CIGO.apiStatusLabel || 'Failed'}</strong> — ${stMsg}</span>
+        </div>`;
+      }
+    }
+
+    const bannerContent = isLive && st === 'connected'
+      ? `<strong style="color:var(--forest)">Live API active.</strong> Calendar will show real capacity data from your Cigo account.`
+      : isLive
+        ? `<strong>Live API mode.</strong> Enter credentials below and click <em>Test & Apply</em>.`
+        : `<strong>Preview mode active.</strong> This is fake data only. Use Live API for real Cigo capacity.`;
+
+    return `
+      <div class="api-banner" id="api-banner-box">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;margin-top:2px">
+          <circle cx="8" cy="8" r="6"/>
+          <path d="M8 7v4M8 5.5v.5"/>
+        </svg>
+        <div>${bannerContent}</div>
+      </div>
+      <div class="config-toggle" id="config-toggle-btn">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="2.5"/>
+          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/>
+        </svg>
+        Developer settings
+      </div>
+      <div class="config-panel ${isLive ? 'open' : ''}" id="config-panel">
+        <div class="config-mode">
+          <button class="mode-btn ${CIGO.demoMode ? 'active' : ''}" id="mode-demo">Preview</button>
+          <button class="mode-btn ${isLive ? 'active' : ''}" id="mode-live">Live API</button>
+        </div>
+        <div class="config-label">Cigo API Key (username)</div>
+        <input class="config-input" id="cfg-key" placeholder="your-api-key" value="${CIGO.apiKey}" />
+        <div class="config-label">Cigo API Secret (password)</div>
+        <input class="config-input" id="cfg-secret" type="password" placeholder="your-api-secret" value="${CIGO.apiSecret}" />
+        <div class="config-label">Proxy URL <span style="color:#555;font-weight:400">(run cigo-proxy.js first)</span></div>
+        <input class="config-input" id="cfg-url" value="${CIGO.baseUrl}" placeholder="http://localhost:3001" />
+        <div class="config-label">Cigo Environment</div>
+        <input class="config-input" id="cfg-target" value="${CIGO.cigoTarget}" placeholder="https://app-demo.cigotracker.com" />
+        ${statusBadge}
+        <button class="config-apply" id="cfg-apply" style="margin-top:10px">Test &amp; Apply</button>
+      </div>
+    `;
+  }
+
+  function initDevPanel() {
+    const toggle = document.getElementById('config-toggle-btn');
+    const panel  = document.getElementById('config-panel');
+    if (!toggle) return;
+    toggle.addEventListener('click', () => panel.classList.toggle('open'));
+
+    document.getElementById('mode-demo').addEventListener('click', () => {
+      CIGO.demoMode = true;
+      CIGO.apiStatus = null;
+      document.getElementById('mode-demo').classList.add('active');
+      document.getElementById('mode-live').classList.remove('active');
+    });
+    document.getElementById('mode-live').addEventListener('click', () => {
+      CIGO.demoMode = false;
+      document.getElementById('mode-live').classList.add('active');
+      document.getElementById('mode-demo').classList.remove('active');
+    });
+    document.getElementById('cfg-apply').addEventListener('click', async () => {
+      CIGO.apiKey     = document.getElementById('cfg-key').value.trim();
+      CIGO.apiSecret  = document.getElementById('cfg-secret').value.trim();
+      CIGO.baseUrl    = document.getElementById('cfg-url').value.trim();
+      CIGO.cigoTarget = document.getElementById('cfg-target').value.trim();
+      localStorage.setItem('cigoCheckoutConfig', JSON.stringify({
+        apiKey: CIGO.apiKey,
+        apiSecret: CIGO.apiSecret,
+        baseUrl: CIGO.baseUrl,
+        cigoTarget: CIGO.cigoTarget,
+        demoMode: CIGO.demoMode
+      }));
+
+      if (!CIGO.demoMode) {
+        // Run the connection test and show inline status
+        CIGO.apiStatus = 'testing';
+        CIGO.apiStatusMsg = '';
+
+        // Show spinner in button
+        const btn = document.getElementById('cfg-apply');
+        btn.textContent = 'Testing…';
+        btn.disabled = true;
+
+        const result = await testApiConnection();
+        CIGO.apiStatus     = result.ok ? 'connected' : 'failed';
+        CIGO.apiStatusMsg  = result.detail;
+        CIGO.apiStatusLabel = result.label;
+
+        // Re-render step1 to reflect new status (keeps panel open)
+        renderStep1();
+      } else {
+        CIGO.apiStatus = null;
+        renderStep1();
+      }
+    });
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="error-msg" style="margin-top:12px">⚠ ${msg}</div>`;
+  }
+
+  function renderLoadingOverlay(msg) {
+    const panel = document.getElementById('checkout-panel');
+
+    const steps = CIGO.demoMode ? null : [
+      { text: 'Verifying delivery address',  delay: 0    },
+      { text: 'Checking your delivery zone', delay: 700  },
+      { text: 'Loading available dates',     delay: 1500 },
+    ];
+
+    panel.innerHTML = `
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-step-text">${steps ? steps[0].text + '…' : msg}</div>
+        ${steps ? `<div id="loading-steps" style="display:flex;flex-direction:column;gap:10px;margin-top:20px;width:100%;max-width:260px;text-align:left"></div>` : ''}
+      </div>
+    `;
+
+    if (!steps) return;
+
+    const container = document.getElementById('loading-steps');
+    const stepText  = document.getElementById('loading-step-text');
+
+    // Build initial step rows
+    steps.forEach(function(s, i) {
+      var row = document.createElement('div');
+      row.id = 'lstep-' + i;
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;font-size:12px;transition:color .3s;color:' + (i === 0 ? 'var(--forest)' : '#D0CCC8');
+      row.innerHTML = '<div id="lstep-icon-' + i + '" style="width:16px;height:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center">'
+        + (i === 0 ? '<div class="spinner" style="width:12px;height:12px;border-width:2px"></div>'
+                   : '<div style="width:7px;height:7px;border-radius:50%;background:#D0CCC8"></div>')
+        + '</div><span>' + s.text + '</span>';
+      container.appendChild(row);
+    });
+
+    // Animate each step transition
+    steps.forEach(function(s, i) {
+      if (i === 0) return;
+      setTimeout(function() {
+        var prev     = document.getElementById('lstep-' + (i - 1));
+        var curr     = document.getElementById('lstep-' + i);
+        var prevIcon = document.getElementById('lstep-icon-' + (i - 1));
+        var currIcon = document.getElementById('lstep-icon-' + i);
+        if (!curr) return;
+        if (prev)     prev.style.color = 'var(--forest-light)';
+        if (prevIcon) prevIcon.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--forest-light)" stroke-width="2.5"><path d="M3 8l3 3 7-7"/></svg>';
+        curr.style.color = 'var(--forest)';
+        if (currIcon) currIcon.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:2px"></div>';
+        if (stepText) stepText.textContent = s.text + '…';
+      }, s.delay);
+    });
+  }
+
+  // ─── Init ──────────────────────────────────────────────────
+  // Start on step 1 (show as step 2 per UX — address was "already entered")
+  // For demo purposes, begin at address step so user sees the full flow
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('cigoCheckoutConfig') || '{}');
+      if (saved.apiKey) CIGO.apiKey = saved.apiKey;
+      if (saved.apiSecret) CIGO.apiSecret = saved.apiSecret;
+      if (saved.baseUrl) CIGO.baseUrl = saved.baseUrl;
+      if (saved.cigoTarget) CIGO.cigoTarget = saved.cigoTarget;
+      if (typeof saved.demoMode === 'boolean') CIGO.demoMode = saved.demoMode;
+    } catch(e) {}
+    state.step = 1;
+    updateProgress();
+    // Always start at the address form — this ensures the correct mode
+    // (Demo vs Live API) is used when the user clicks "Check availability"
+    renderStep1();
+  });
+
+</script>
+</body>
+</html>
