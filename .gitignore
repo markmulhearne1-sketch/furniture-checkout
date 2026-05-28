@@ -1,0 +1,7 @@
+# Only track the checkout demo files
+*
+
+# Exceptions — always include these
+!.gitignore
+!furniture-checkout-demo.html
+!cigo-proxy.js
