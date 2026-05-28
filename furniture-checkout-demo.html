@@ -878,11 +878,12 @@
         state.availableDates = dates;
         state.limitedDates   = limited;
       } else {
-        // Use prefetch cache if ready — instant. Otherwise await the call.
-        const cached = prefetchCache[state.addressString];
+        // Use GPS geoloc cache first, then address cache, then live call
+        const cacheKey = state.geolocation || state.addressString;
+        const cached   = prefetchCache[cacheKey];
         const datesList = Array.isArray(cached)
-          ? cached
-          : await apiFetchAvailableDates(state.addressString, null);
+          ? (console.log('Cache hit — instant render'), cached)
+          : await apiFetchAvailableDates(state.addressString, state.geolocation);
         state.availableDates = new Set();
         state.limitedDates   = new Set();
         datesList.forEach(d => state.availableDates.add(d));
@@ -1555,6 +1556,39 @@
     // Always start at the address form — this ensures the correct mode
     // (Demo vs Live API) is used when the user clicks "Check availability"
     renderStep1();
+
+    // ── GPS prefetch ────────────────────────────────────────────
+    // Silently ask for browser location as soon as the page loads.
+    // If granted, fire the Cigo API call immediately in the background.
+    // By the time the user fills in their address and clicks the button,
+    // the result is already cached → calendar appears instantly.
+    if (!CIGO.demoMode && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          const geoloc = pos.coords.latitude.toFixed(6) + ',' + pos.coords.longitude.toFixed(6);
+          state.geolocation = geoloc;
+          console.log('GPS location acquired:', geoloc, '— prefetching availability…');
+
+          // Fire API call and cache under the geoloc key
+          if (prefetchCache[geoloc] !== undefined) return;
+          prefetchCache[geoloc] = 'loading';
+          apiFetchAvailableDates(null, geoloc)
+            .then(function(dates) {
+              prefetchCache[geoloc] = dates;
+              console.log('GPS prefetch complete —', dates.length, 'dates cached');
+            })
+            .catch(function() {
+              prefetchCache[geoloc] = null;
+            });
+        },
+        function() {
+          // User denied or unavailable — fall back to address-based prefetch on postal code
+          console.log('GPS unavailable — will use address prefetch');
+          state.geolocation = null;
+        },
+        { timeout: 8000, maximumAge: 300000 }
+      );
+    }
   });
 
 </script>
