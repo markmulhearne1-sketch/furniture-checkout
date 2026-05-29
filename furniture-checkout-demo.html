@@ -1510,15 +1510,142 @@
         throw new Error(`Error ${res.status}: ${msg}`);
       }
 
-      const job = await res.json();
-      console.log('Cigo job created:', job);
-      console.log('Job payload sent:', jobPayload);
+      const rawResponse = await res.json();
+      console.log('Cigo job created (full response):', JSON.stringify(rawResponse, null, 2));
+
+      // Cigo wraps the created job in a "data" envelope: { statusCode, data: { id, ... } }
+      const job = rawResponse.data || rawResponse;
+
+      // Auto-route: fire and forget — don't block success screen
+      const jobId = job.id || job.job_id || job.reference || job.api_id;
+      console.log('Extracted jobId:', jobId, '— job keys:', Object.keys(job));
+      if (jobId) {
+        autoRouteJob(jobId, state.selectedDate).catch(e => {
+          console.warn('Auto-routing failed (non-blocking):', e.message);
+        });
+      }
+
       renderOrderSuccess(job);
     } catch(e) {
       btn.disabled = false;
       btn.textContent = 'Place order · $3,448';
       showError('step3-error', `Could not create order: ${e.message}`);
     }
+  }
+
+  // ─── Auto-Route Job to Vehicle ─────────────────────────────
+  // After a job is created, find the first vehicle with capacity
+  // for the delivery date and assign it. Creates an itinerary if
+  // none exists for that vehicle yet.
+  const ROUTE_VEHICLES = [
+    '7e2d60020e32b4a709091146f9c9ca94',
+    'a0e8688dc385a4c6a1ac00b524937e0c',
+  ];
+  const JOB_VOLUME = 100; // matches unit_volume in the action
+  const JOB_WEIGHT = 50;  // matches unit_weight in the action
+
+  async function autoRouteJob(jobId, deliveryDate) {
+    console.log(`Auto-routing job ${jobId} for ${deliveryDate}…`);
+
+    // 1. Fetch all itineraries for the delivery date
+    const itnRes = await fetch(
+      buildUrl(`/api/v1/itineraries/date/${deliveryDate}`, new URLSearchParams()),
+      { headers: { Authorization: authHeader() } }
+    );
+    if (!itnRes.ok) throw new Error(`Could not fetch itineraries: ${itnRes.status}`);
+    const itnRaw   = await itnRes.json();
+    console.log('Itineraries raw response:', JSON.stringify(itnRaw, null, 2));
+    // Handle Cigo envelope: { statusCode, data: { itineraries: [...] } } or { statusCode, data: [...] }
+    const itnPayload = itnRaw.data || itnRaw;
+    const existing   = itnPayload.itineraries || (Array.isArray(itnPayload) ? itnPayload : []);
+    console.log(`Found ${existing.length} itineraries for ${deliveryDate}`);
+
+    // 2. Try each vehicle in priority order
+    for (const vehicleId of ROUTE_VEHICLES) {
+      const itn = existing.find(i => i.vehicle && i.vehicle.id === vehicleId);
+
+      if (itn) {
+        // Vehicle already has a route — check remaining volume capacity
+        const usedVolume = parseFloat(itn.route_metrics?.volume || 0);
+        const maxVolume  = parseFloat(itn.vehicle?.volume_capacity || 0);
+        const remaining  = maxVolume - usedVolume;
+        console.log(`Vehicle ${vehicleId}: volume ${usedVolume}/${maxVolume} (need ${JOB_VOLUME})`);
+
+        if (remaining < JOB_VOLUME) {
+          console.log(`Vehicle ${vehicleId} full — trying next`);
+          continue;
+        }
+
+        // Add job to existing itinerary
+        const addRes = await fetch(
+          buildUrl(`/api/v1/itineraries/${itn.itinerary_id}`, new URLSearchParams()),
+          {
+            method:  'PUT',
+            headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ add_ids: [jobId] }),
+          }
+        );
+        if (addRes.ok) {
+          console.log(`✅ Job ${jobId} added to existing itinerary ${itn.itinerary_id} on vehicle ${vehicleId}`);
+          return;
+        }
+        console.warn(`PUT to itinerary ${itn.itinerary_id} failed: ${addRes.status}`);
+
+      } else {
+        // No itinerary yet for this vehicle — create one
+        console.log(`No itinerary for vehicle ${vehicleId} — creating…`);
+        const createRes = await fetch(
+          buildUrl('/api/v1/itineraries', new URLSearchParams()),
+          {
+            method:  'POST',
+            headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              date:                      deliveryDate,
+              start_time:                '8:30 AM',
+              bypass_zone_capacity_rules: 'false',
+              time_frame_size:           1.5,
+              vehicle_id:                vehicleId,
+              start_point:               { id: '9e2c93784c8c0622330b4dccd2537695' },
+              end_point:                 { id: '9e2c93784c8c0622330b4dccd2537695' },
+              routing_info: {
+                avoid_tolls:             false,
+                avoid_highways:          false,
+                avoid_ferries:           false,
+                consider_traffic:        false,
+                street_side:             'any',
+                optimized_route:         true,
+                ignore_min_jobs:         true,
+                ignore_max_jobs:         false,
+                ignore_max_driving_time: false,
+                ignore_max_distance:     false,
+                ignore_max_volume:       false,
+                ignore_max_weight:       false,
+                min_jobs:                1,
+                max_jobs:                40,
+                max_driving_time:        40000,
+                max_distance:            40000,
+                time_windows_type:       'preference',
+              },
+              options: {
+                label: 'Maison Delivery Route',
+                color: '#2C3E2D',
+              },
+              add_ids:                  [jobId],
+              include_stops_sequence:   false,
+            }),
+          }
+        );
+        if (createRes.ok) {
+          const created = await createRes.json();
+          console.log(`✅ New itinerary created for vehicle ${vehicleId}:`, created);
+          return;
+        }
+        const errBody = await createRes.json().catch(() => ({}));
+        console.warn(`Create itinerary failed for vehicle ${vehicleId}:`, errBody);
+      }
+    }
+
+    console.warn('⚠️ No vehicles had available capacity — job left unrouted');
   }
 
   function renderOrderSuccess(job) {

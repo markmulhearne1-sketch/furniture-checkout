@@ -26,13 +26,19 @@ const url   = require('url');
 
 const PORT = 3001;
 
-// Allowed Cigo endpoints to proxy
+// Exact allowed paths
 const ALLOWED_PATHS = [
   '/available-booking-dates',
   '/available-slots',
   '/api/v1/available-booking-dates',
   '/api/v1/available-slots',
   '/api/v1/jobs',
+  '/api/v1/itineraries',
+];
+
+// Prefix-matched paths (for routes with dynamic IDs/dates)
+const ALLOWED_PREFIXES = [
+  '/api/v1/itineraries/',  // covers /date/{date} and /{id}
 ];
 
 const server = http.createServer((req, res) => {
@@ -40,7 +46,7 @@ const server = http.createServer((req, res) => {
   // ── CORS headers ─────────────────────────────────────────
   // These let the browser talk to this local proxy from any origin
   res.setHeader('Access-Control-Allow-Origin',  '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
 
   // Preflight request — browser sends this before the real request
@@ -54,7 +60,9 @@ const server = http.createServer((req, res) => {
   const parsed   = url.parse(req.url, true);
   const pathname = parsed.pathname;
 
-  if (!ALLOWED_PATHS.includes(pathname)) {
+  const allowed = ALLOWED_PATHS.includes(pathname)
+    || ALLOWED_PREFIXES.some(p => pathname.startsWith(p));
+  if (!allowed) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: `Unknown path: ${pathname}` }));
     return;
