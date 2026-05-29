@@ -1677,7 +1677,15 @@
             </div>
           </div>
         </div>
-        <div style="font-size:12px;color:var(--muted)">${orderLabel}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:24px">${orderLabel}</div>
+        <button onclick="goBackToDatePicker()" style="
+          display:inline-flex;align-items:center;gap:8px;
+          padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;
+          border:1.5px solid var(--forest);color:var(--forest);background:transparent;
+          cursor:pointer;transition:all .15s;font-family:inherit;
+        " onmouseover="this.style.background='var(--forest-pale)'" onmouseout="this.style.background='transparent'">
+          ← Book another delivery
+        </button>
       </div>
     `;
     // Update progress
@@ -1686,6 +1694,16 @@
       el.className = 'progress-step done';
       el.querySelector('.step-num').textContent = '✓';
     });
+  }
+
+  function goBackToDatePicker() {
+    // Reset delivery state, keep name/address
+    state.selectedDate   = null;
+    state.selectedWindow = null;
+    state.slotData       = null;
+    state.step           = 2;
+    renderStep();
+    updateProgress();
   }
 
   // ─── Progress ──────────────────────────────────────────────
@@ -1898,38 +1916,7 @@
     // (Demo vs Live API) is used when the user clicks "Check availability"
     renderStep1();
 
-    // ── GPS prefetch ────────────────────────────────────────────
-    // Silently ask for browser location as soon as the page loads.
-    // If granted, fire the Cigo API call immediately in the background.
-    // By the time the user fills in their address and clicks the button,
-    // the result is already cached → calendar appears instantly.
-    if (!CIGO.demoMode && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        function(pos) {
-          const geoloc = pos.coords.latitude.toFixed(6) + ',' + pos.coords.longitude.toFixed(6);
-          state.geolocation = geoloc;
-          console.log('GPS location acquired:', geoloc, '— prefetching availability…');
-
-          // Fire API call and cache under the geoloc key
-          if (prefetchCache[geoloc] !== undefined) return;
-          prefetchCache[geoloc] = 'loading';
-          apiFetchAvailableDates(null, geoloc)
-            .then(function(dates) {
-              prefetchCache[geoloc] = dates;
-              console.log('GPS prefetch complete —', dates.length, 'dates cached');
-            })
-            .catch(function() {
-              prefetchCache[geoloc] = null;
-            });
-        },
-        function() {
-          // User denied or unavailable — fall back to address-based prefetch on postal code
-          console.log('GPS unavailable — will use address prefetch');
-          state.geolocation = null;
-        },
-        { timeout: 8000, maximumAge: 300000 }
-      );
-    }
+    // GPS prefetch removed — no browser location prompt.
   });
 
 </script>
