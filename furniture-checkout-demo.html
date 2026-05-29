@@ -506,6 +506,8 @@
   // ─── App State ─────────────────────────────────────────────
   const state = {
     step:              1,
+    firstName:         '',
+    lastName:          '',
     address:           null,
     geolocation:       null,
     addressString:     '',
@@ -760,6 +762,14 @@
         <div class="panel-subtitle">We'll use this to check real-time availability in your area.</div>
 
         <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <input class="form-input" id="f-first" placeholder="Jane" value="${state.firstName || ''}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <input class="form-input" id="f-last" placeholder="Smith" value="${state.lastName || ''}" />
+          </div>
           <div class="form-group form-full">
             <label class="form-label">Street Address</label>
             <input class="form-input" id="f-street" placeholder="123 Elm Street" value="${state.address?.street || '123 Elm Street'}" />
@@ -841,17 +851,19 @@
 
   // ─── Handle: Check Availability ────────────────────────────
   async function handleCheckAvailability() {
-    const street   = document.getElementById('f-street').value.trim();
-    const city     = document.getElementById('f-city').value.trim();
-    const province = document.getElementById('f-province').value.trim();
-    const postal   = document.getElementById('f-postal').value.trim();
+    const firstName = document.getElementById('f-first').value.trim();
+    const lastName  = document.getElementById('f-last').value.trim();
+    const street    = document.getElementById('f-street').value.trim();
+    const city      = document.getElementById('f-city').value.trim();
+    const province  = document.getElementById('f-province').value.trim();
+    const postal    = document.getElementById('f-postal').value.trim();
 
-    if (!street || !city || !postal) {
-      showError('step1-error', 'Please fill in your street address, city, and postal code.');
-      return;
-    }
+    if (!firstName)              { showError('step1-error', 'Please enter your first name.'); return; }
+    if (!street || !city || !postal) { showError('step1-error', 'Please fill in your street address, city, and postal code.'); return; }
 
-    state.address = { street, city, province, postal };
+    state.firstName = firstName;
+    state.lastName  = lastName;
+    state.address   = { street, city, province, postal };
     state.addressString = formatCigoAddress(state.address);
     state.geolocation = null; // Do not hardcode Toronto. Let Cigo/proxy use the actual address.
     state.availabilityError = null;
@@ -1241,6 +1253,13 @@
 
         <div class="confirm-details" style="margin-bottom:28px">
           <div class="confirm-row">
+            <div class="confirm-icon-sm">👤</div>
+            <div class="confirm-row-body">
+              <div class="confirm-row-label">Customer</div>
+              <div class="confirm-row-val">${state.firstName} ${state.lastName}</div>
+            </div>
+          </div>
+          <div class="confirm-row">
             <div class="confirm-icon-sm">📍</div>
             <div class="confirm-row-body">
               <div class="confirm-row-label">Delivery Address</div>
@@ -1270,16 +1289,7 @@
           </div>
         </div>
 
-        <!-- Payment placeholder -->
-        <div style="margin-bottom:20px">
-          <div style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px">Payment</div>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:10px">
-            <input class="form-input" placeholder="Card number" style="grid-column:1/-1"/>
-            <input class="form-input" placeholder="MM / YY" />
-            <input class="form-input" placeholder="CVC" />
-          </div>
-        </div>
-
+        <div id="step3-error"></div>
         <button class="btn-primary" id="btn-place-order"
           style="background:var(--sand);color:white">
           Place order · $3,448
@@ -1304,12 +1314,69 @@
   async function handlePlaceOrder() {
     const btn = document.getElementById('btn-place-order');
     btn.disabled = true;
-    btn.textContent = 'Processing…';
-    await delay(1800);
-    renderOrderSuccess();
+    btn.textContent = 'Placing order…';
+
+    const windowMap = { am: 'AM', pm: 'PM', eve: 'evening' };
+
+    // time_frame.start/end must be "h:i A" format (7–8 chars), e.g. "8:00 AM"
+    const timeFrames = {
+      am:  { start: '8:00 AM',  end: '12:00 PM' },
+      pm:  { start: '12:00 PM', end: '4:00 PM'  },
+      eve: { start: '4:00 PM',  end: '8:00 PM'  },
+    };
+    const tf = timeFrames[state.selectedWindow] || null;
+
+    const jobPayload = {
+      type:         'delivery',
+      date:         state.selectedDate,
+      first_name:   state.firstName,
+      phone_number: '555-555-5555',
+      address:      state.addressString,
+      quick_desc:   'Sofa',
+      comment:      'White-glove delivery — Elara L-Shaped Sectional Sofa, Dove Grey. Full assembly & room placement included.',
+      skip_staging: true,
+    };
+
+    // Only include optional fields if they have a real value
+    if (state.lastName)            jobPayload.last_name        = state.lastName;
+    if (windowMap[state.selectedWindow]) jobPayload.time_preference = windowMap[state.selectedWindow];
+    if (tf)                        jobPayload.time_frame        = { start: tf.start, end: tf.end };
+
+    console.log('Placing order with payload:', JSON.stringify(jobPayload, null, 2));
+
+    try {
+      const res = await fetch(buildUrl('/api/v1/jobs', new URLSearchParams()), {
+        method:  'POST',
+        headers: {
+          'Authorization': authHeader(),
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify(jobPayload),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        console.error('Cigo 422 response:', errBody);
+        const msg = errBody.message || errBody.error || errBody.errors
+          ? (errBody.message || errBody.error || JSON.stringify(errBody.errors))
+          : JSON.stringify(errBody);
+        throw new Error(`Error ${res.status}: ${msg}`);
+      }
+
+      const job = await res.json();
+      console.log('Cigo job created:', job);
+      console.log('Job payload sent:', jobPayload);
+      renderOrderSuccess(job);
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = 'Place order · $3,448';
+      showError('step3-error', `Could not create order: ${e.message}`);
+    }
   }
 
-  function renderOrderSuccess() {
+  function renderOrderSuccess(job) {
+    const jobRef = (job && (job.reference || job.id || job.job_id)) || null;
+    const orderLabel = jobRef ? 'Cigo Job #' + jobRef : 'Order #MAI-' + Math.random().toString(36).substr(2,8).toUpperCase();
     const panel = document.getElementById('checkout-panel');
     panel.innerHTML = `
       <div style="text-align:center;padding:20px 0">
@@ -1336,7 +1403,7 @@
             </div>
           </div>
         </div>
-        <div style="font-size:12px;color:var(--muted)">Order #MAI-${Math.random().toString(36).substr(2,8).toUpperCase()}</div>
+        <div style="font-size:12px;color:var(--muted)">${orderLabel}</div>
       </div>
     `;
     // Update progress

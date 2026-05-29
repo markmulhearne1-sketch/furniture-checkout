@@ -32,6 +32,7 @@ const ALLOWED_PATHS = [
   '/available-slots',
   '/api/v1/available-booking-dates',
   '/api/v1/available-slots',
+  '/api/v1/jobs',
 ];
 
 const server = http.createServer((req, res) => {
@@ -39,7 +40,7 @@ const server = http.createServer((req, res) => {
   // ── CORS headers ─────────────────────────────────────────
   // These let the browser talk to this local proxy from any origin
   res.setHeader('Access-Control-Allow-Origin',  '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
 
   // Preflight request — browser sends this before the real request
@@ -67,44 +68,56 @@ const server = http.createServer((req, res) => {
   delete queryParams._base;
 
   const forwardQuery = new URLSearchParams(queryParams).toString();
-  const targetUrl    = `${cigoBase}${pathname}?${forwardQuery}`;
+  const targetUrl    = `${cigoBase}${pathname}${forwardQuery ? '?' + forwardQuery : ''}`;
 
   // ── Forward Authorization header from browser → Cigo ──────
   const authHeader = req.headers['authorization'] || '';
+  const method     = req.method; // GET or POST
 
-  console.log(`→ ${new Date().toLocaleTimeString()}  GET ${pathname}`);
+  console.log(`→ ${new Date().toLocaleTimeString()}  ${method} ${pathname}`);
   console.log(`  Full URL: ${targetUrl}`);
   console.log(`  Auth:   ${authHeader ? 'provided ✓' : 'MISSING ✗'}`);
 
-  // ── Make the request to Cigo ───────────────────────────────
-  const cigoUrl    = new URL(targetUrl);
-  const reqOptions = {
-    hostname: cigoUrl.hostname,
-    path:     cigoUrl.pathname + '?' + cigoUrl.searchParams.toString(),
-    method:   'GET',
-    headers: {
+  // ── Collect request body (for POST) ───────────────────────
+  let bodyData = '';
+  req.on('data', chunk => { bodyData += chunk.toString(); });
+  req.on('end', () => {
+
+    // ── Make the request to Cigo ─────────────────────────────
+    const cigoUrl    = new URL(targetUrl);
+    const reqHeaders = {
       'Authorization': authHeader,
       'Accept':        'application/json',
+    };
+    if (method === 'POST') {
+      reqHeaders['Content-Type']   = 'application/json';
+      reqHeaders['Content-Length'] = Buffer.byteLength(bodyData);
     }
-  };
 
-  const cigoReq = https.request(reqOptions, (cigoRes) => {
-    console.log(`  Status: ${cigoRes.statusCode}`);
+    const reqOptions = {
+      hostname: cigoUrl.hostname,
+      path:     cigoUrl.pathname + (cigoUrl.search || ''),
+      method,
+      headers:  reqHeaders,
+    };
 
-    // Pass Cigo's status + JSON back to the browser
-    res.writeHead(cigoRes.statusCode, {
-      'Content-Type': 'application/json',
+    const cigoReq = https.request(reqOptions, (cigoRes) => {
+      console.log(`  Status: ${cigoRes.statusCode}`);
+      res.writeHead(cigoRes.statusCode, { 'Content-Type': 'application/json' });
+      cigoRes.pipe(res);
     });
-    cigoRes.pipe(res);
-  });
 
-  cigoReq.on('error', (err) => {
-    console.error(`  Error: ${err.message}`);
-    res.writeHead(502, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Proxy could not reach Cigo API', detail: err.message }));
-  });
+    cigoReq.on('error', (err) => {
+      console.error(`  Error: ${err.message}`);
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Proxy could not reach Cigo API', detail: err.message }));
+    });
 
-  cigoReq.end();
+    if (method === 'POST' && bodyData) {
+      cigoReq.write(bodyData);
+    }
+    cigoReq.end();
+  });
 });
 
 server.listen(PORT, '127.0.0.1', () => {
