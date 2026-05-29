@@ -137,6 +137,27 @@
     .form-input:focus { border-color: var(--forest); }
     .form-input::placeholder { color: var(--muted); font-weight: 300; }
     .form-hint { font-size: 11px; color: var(--muted); }
+    /* ─── Address Autocomplete ──────────────────────────────── */
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-dropdown {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--white); border: 1.5px solid var(--forest);
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+      z-index: 200; overflow: hidden; max-height: 260px; overflow-y: auto;
+    }
+    .autocomplete-item {
+      padding: 10px 14px; font-size: 13px; cursor: pointer;
+      border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start;
+      transition: background .15s;
+    }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover, .autocomplete-item.focused { background: var(--forest-pale); }
+    .autocomplete-item-icon { color: var(--sand); flex-shrink: 0; margin-top: 1px; }
+    .autocomplete-item-main { font-weight: 500; color: var(--text); line-height: 1.4; }
+    .autocomplete-item-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .autocomplete-spinner {
+      padding: 12px 14px; font-size: 12px; color: var(--muted); text-align: center;
+    }
     /* ─── Calendar ──────────────────────────────────────────── */
     .calendar-wrap { margin-top: 4px; }
     .cal-header {
@@ -772,19 +793,23 @@
           </div>
           <div class="form-group form-full">
             <label class="form-label">Street Address</label>
-            <input class="form-input" id="f-street" placeholder="123 Elm Street" value="${state.address?.street || '123 Elm Street'}" />
+            <div class="autocomplete-wrap">
+              <input class="form-input" id="f-street" placeholder="Start typing your address…" autocomplete="off"
+                     value="${state.address?.street || ''}" style="width:100%" />
+              <div class="autocomplete-dropdown" id="ac-dropdown" style="display:none"></div>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">City</label>
-            <input class="form-input" id="f-city" placeholder="Toronto" value="${state.address?.city || 'Toronto'}" />
+            <input class="form-input" id="f-city" placeholder="Toronto" value="${state.address?.city || ''}" />
           </div>
           <div class="form-group">
             <label class="form-label">Province / State</label>
-            <input class="form-input" id="f-province" placeholder="Ontario" value="${state.address?.province || 'Ontario'}" />
+            <input class="form-input" id="f-province" placeholder="Ontario" value="${state.address?.province || ''}" />
           </div>
           <div class="form-group">
             <label class="form-label">Postal / ZIP Code</label>
-            <input class="form-input" id="f-postal" placeholder="M5V 2T6" value="${state.address?.postal || 'M5V 2T6'}" />
+            <input class="form-input" id="f-postal" placeholder="M5V 2T6" value="${state.address?.postal || ''}" />
           </div>
           <div class="form-group">
             <label class="form-label">Apt / Suite <span style="font-weight:300;color:var(--muted)">(optional)</span></label>
@@ -804,6 +829,7 @@
     document.getElementById('btn-check-avail').addEventListener('click', handleCheckAvailability);
     initDevPanel();
     initPrefetch();
+    initAddressAutocomplete();
   }
 
   // ─── Prefetch: silently hit API once postal code is complete ──
@@ -846,6 +872,117 @@
             prefetchCache[addr] = null; // mark as failed so we retry properly on submit
           });
       }, 400);
+    });
+  }
+
+  // ─── Address Autocomplete (Nominatim) ──────────────────────
+  function initAddressAutocomplete() {
+    const input    = document.getElementById('f-street');
+    const dropdown = document.getElementById('ac-dropdown');
+    if (!input || !dropdown) return;
+
+    let acTimer   = null;
+    let focusIdx  = -1;
+    let results   = [];
+
+    function showDropdown(items) {
+      results  = items;
+      focusIdx = -1;
+      if (!items.length) { dropdown.style.display = 'none'; return; }
+      dropdown.innerHTML = items.map((r, i) => {
+        const parts = r.display_name.split(', ');
+        const main  = parts.slice(0, 2).join(', ');
+        const sub   = parts.slice(2).join(', ');
+        return `<div class="autocomplete-item" data-idx="${i}">
+          <div class="autocomplete-item-icon">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="8" cy="6" r="3"/><path d="M8 2C5.24 2 3 4.24 3 7c0 4 5 8 5 8s5-4 5-7c0-2.76-2.24-5-5-5z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="autocomplete-item-main">${main}</div>
+            ${sub ? `<div class="autocomplete-item-sub">${sub}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+      dropdown.style.display = 'block';
+
+      dropdown.querySelectorAll('.autocomplete-item').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selectResult(parseInt(el.dataset.idx));
+        });
+      });
+    }
+
+    function selectResult(idx) {
+      const r = results[idx];
+      if (!r) return;
+
+      // Parse address components from Nominatim
+      const addr = r.address || {};
+      const street = [addr.house_number, addr.road].filter(Boolean).join(' ')
+                  || r.display_name.split(',')[0];
+      const city     = addr.city || addr.town || addr.village || addr.county || '';
+      const province = addr.state || addr.province || '';
+      const postal   = addr.postcode || '';
+
+      // Fill fields
+      input.value = street;
+      const cityEl     = document.getElementById('f-city');
+      const provEl     = document.getElementById('f-province');
+      const postalEl   = document.getElementById('f-postal');
+      if (cityEl)   cityEl.value   = city;
+      if (provEl)   provEl.value   = province;
+      if (postalEl) postalEl.value = postal;
+
+      dropdown.style.display = 'none';
+
+      // Trigger prefetch with the filled address
+      if (postalEl) postalEl.dispatchEvent(new Event('input'));
+    }
+
+    function moveFocus(dir) {
+      const items = dropdown.querySelectorAll('.autocomplete-item');
+      if (!items.length) return;
+      items[focusIdx]?.classList.remove('focused');
+      focusIdx = Math.max(0, Math.min(items.length - 1, focusIdx + dir));
+      items[focusIdx]?.classList.add('focused');
+      items[focusIdx]?.scrollIntoView({ block: 'nearest' });
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(acTimer);
+      const q = input.value.trim();
+      if (q.length < 4) { dropdown.style.display = 'none'; return; }
+
+      dropdown.innerHTML = '<div class="autocomplete-spinner">Searching…</div>';
+      dropdown.style.display = 'block';
+
+      acTimer = setTimeout(async () => {
+        try {
+          const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&countrycodes=ca,us`;
+          const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+          const data = await res.json();
+          showDropdown(data);
+        } catch {
+          dropdown.style.display = 'none';
+        }
+      }, 350);
+    });
+
+    input.addEventListener('keydown', e => {
+      if (dropdown.style.display === 'none') return;
+      if (e.key === 'ArrowDown')  { e.preventDefault(); moveFocus(1); }
+      if (e.key === 'ArrowUp')    { e.preventDefault(); moveFocus(-1); }
+      if (e.key === 'Enter')      { e.preventDefault(); if (focusIdx >= 0) selectResult(focusIdx); }
+      if (e.key === 'Escape')     { dropdown.style.display = 'none'; }
+    });
+
+    document.addEventListener('click', e => {
+      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
     });
   }
 
@@ -1335,6 +1472,16 @@
       quick_desc:   'Sofa',
       comment:      'White-glove delivery — Elara L-Shaped Sectional Sofa, Dove Grey. Full assembly & room placement included.',
       skip_staging: true,
+      actions: [
+        {
+          id:          'ELARA-SECTIONAL-DG',
+          type:        'delivery',
+          description: 'Elara L-Shaped Sectional Sofa — Dove Grey',
+          unit_weight: 50,
+          unit_volume: 100,
+          quantity:    1,
+        }
+      ],
     };
 
     // Only include optional fields if they have a real value
